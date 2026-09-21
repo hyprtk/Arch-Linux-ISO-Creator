@@ -316,7 +316,7 @@ _build_aur() {
     _info "Building ${#pkgs[@]} AUR package(s) as $REAL_USER (best-effort)"
     local srcdir="$HOST_CACHE/aur"
     rm -rf "$srcdir"; mkdir -p "$srcdir" "$AUR_STAGE"
-    chown -R "$REAL_USER" "$srcdir"
+    chown -R "$REAL_USER" "$srcdir" 2>/dev/null || true
 
     local -a ok=() bad=()
     for p in "${pkgs[@]}"; do
@@ -324,7 +324,7 @@ _build_aur() {
         if ! _as_user git clone --depth=1 "https://aur.archlinux.org/$p.git" "$d" >/dev/null 2>&1; then
             _warn "could not fetch $p"; bad+=("$p"); continue
         fi
-        if _as_user bash -c "cd '$d' && makepkg -f --nocheck --nodeps --noconfirm" >"$srcdir/$p.log" 2>&1; then
+        if _as_user bash -c "cd '$d' && makepkg -f --nocheck --nodeps --skippgpcheck --noconfirm" >"$srcdir/$p.log" 2>&1; then
             cp -f "$d"/*.pkg.tar.* "$AUR_STAGE"/ 2>/dev/null || true
             ok+=("$p")
         else
@@ -333,8 +333,9 @@ _build_aur() {
         fi
     done
 
-    [ "${#ok[@]}" -gt 0 ] && _ok "AUR built: ${ok[*]}"
-    [ "${#bad[@]}" -gt 0 ] && _warn "AUR skipped: ${bad[*]}"
+    if [ "${#ok[@]}" -gt 0 ]; then _ok "AUR built: ${ok[*]}"; fi
+    if [ "${#bad[@]}" -gt 0 ]; then _warn "AUR skipped: ${bad[*]}"; fi
+    return 0
 }
 
 # ── matuwall (C/meson, built from source on the host) ──────────────────────
@@ -351,12 +352,12 @@ _build_matuwall() {
     if ! _as_user git clone --depth=1 https://github.com/naurissteins/Matuwall.git "$d" >/dev/null 2>&1; then
         _warn "could not clone Matuwall - skipping"; return 0
     fi
-    chown -R "$REAL_USER" "$d"
+    chown -R "$REAL_USER" "$d" 2>/dev/null || true
     if _as_user bash -c \
             "cd '$d' && meson setup build --prefix=/usr --buildtype=release && ninja -C build" \
             >"$d/build.log" 2>&1; then
         rm -rf "$MTW_STAGE"; mkdir -p "$MTW_STAGE"
-        if ninja -C "$d/build" install DESTDIR="$MTW_STAGE" >/dev/null 2>&1; then
+        if DESTDIR="$MTW_STAGE" ninja -C "$d/build" install >>"$d/build.log" 2>&1; then
             _ok "matuwall staged"
         else
             _warn "matuwall install step failed (log: $d/build.log)"
@@ -364,6 +365,7 @@ _build_matuwall() {
     else
         _warn "matuwall build failed (log: $d/build.log)"
     fi
+    return 0
 }
 
 # ── Build ──────────────────────────────────────────────────────────────────
@@ -395,7 +397,8 @@ _ensure_host_deps
 HYPRTK_SRC="$(_resolve_hyprtk)"
 _ok "hyprtk source: $HYPRTK_SRC"
 
-mkdir -p "$HOST_CACHE"; chown -R "$REAL_USER" "$HOST_CACHE"
+mkdir -p "$HOST_CACHE"
+chown "$REAL_USER" "$HOST_CACHE" 2>/dev/null || true
 
 if [ "$ASSUME_YES" -ne 1 ] && [ "$PROFILE_ONLY" -ne 1 ]; then
     printf "${WHITE}Build a live ISO from this source? [y/N] ${NC}"

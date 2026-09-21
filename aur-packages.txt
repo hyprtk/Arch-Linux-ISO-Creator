@@ -22,8 +22,12 @@ tumbler-extra-thumbnailers
 trizen
 pacseek
 waypaper
-nitrogen
 pfetch
+
+## nitrogen is X11-only and needs gtk2 on the host to build; waypaper and
+## matuwall already cover wallpapers on the Wayland desktop, so it is off by
+## default. Uncomment if you want it (install `gtk2` on the host first).
+#nitrogen
 
 ## Heavier optional apps — uncomment to bake in (large ISO / long build)
 #brave-bin

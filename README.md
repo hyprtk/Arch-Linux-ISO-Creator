@@ -86,11 +86,12 @@ generates `/etc/skel` from your hyprtk checkout (trimming `assets/screenshots`,
 
 ## AUR extras
 
-`aur-packages.txt` is built with `makepkg --nodeps` as your normal user, then
-installed into the chroot by `customize_airootfs.sh`. The stage is
-**best-effort**: anything that fails to build is reported and skipped, and the
-ISO is still produced. Because of `--nodeps`, the host must already have each
-package's build dependencies. The visually important extras
+`aur-packages.txt` is built with `makepkg --nodeps --skippgpcheck` as your
+normal user, then installed into the chroot by `customize_airootfs.sh`. The
+stage is **best-effort**: anything that fails to build is reported and skipped,
+and the ISO is still produced. Because of `--nodeps`, the host must already
+have each package's build dependencies (`--skippgpcheck` skips source PGP
+verification; checksums are still enforced). The visually important extras
 (`swaylock-effects`, `bibata-cursor-theme`, `sddm-theme-sugar-candy-git`) are
 listed out of the box; if they are missing the ISO falls back gracefully
 (plain `swaylock` config, default cursor/SDDM theme).
