@@ -75,6 +75,30 @@ spin() { # title, shell-command
     fi
 }
 
+# ── Non-interactive overrides ──────────────────────────────────────────────
+# Supplying --target (with --yes) runs the whole install without prompts, which
+# is how it is driven in CI/VM tests. Passwords via flags are visible in the
+# process list; prefer the interactive prompts on a real machine.
+OPT_TARGET=""; OPT_USER=""; OPT_HOSTNAME=""; OPT_TZ=""; OPT_LOCALE=""; OPT_KEYMAP=""
+OPT_ROOTPW=""; OPT_USERPW=""; OPT_YES=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --target)        OPT_TARGET="${2:?}"; shift ;;
+        --user)          OPT_USER="${2:?}"; shift ;;
+        --hostname)      OPT_HOSTNAME="${2:?}"; shift ;;
+        --timezone)      OPT_TZ="${2:?}"; shift ;;
+        --locale)        OPT_LOCALE="${2:?}"; shift ;;
+        --keymap)        OPT_KEYMAP="${2:?}"; shift ;;
+        --root-password) OPT_ROOTPW="${2:?}"; shift ;;
+        --user-password) OPT_USERPW="${2:?}"; shift ;;
+        -y|--yes)        OPT_YES=1 ;;
+        -h|--help)       sed -n '2,18p' "$0"; exit 0 ;;
+        *) die "unknown option: $1" ;;
+    esac
+    shift
+done
+export OPT_TARGET OPT_USER OPT_HOSTNAME OPT_TZ OPT_LOCALE OPT_KEYMAP OPT_ROOTPW OPT_USERPW OPT_YES
+
 # ── Preconditions ──────────────────────────────────────────────────────────
 [ -d /run/archiso ] || die "This does not look like the hyprtk live medium."
 for cmd in rsync arch-chroot genfstab sgdisk mkfs.fat mkfs.ext4 grub-install; do
@@ -91,17 +115,21 @@ log "live medium: ${LIVE_SRC:-unknown} (disk ${LIVE_DISK:-unknown})"
 
 # ── Target selection ───────────────────────────────────────────────────────
 title "Select the target disk"
-mapfile -t DISKS < <(lsblk -dpno NAME,SIZE,MODEL,TRAN 2>/dev/null | awk -v live="$LIVE_DISK" 'NF && $1 != live')
-[ "${#DISKS[@]}" -gt 0 ] || die "No candidate target disks found."
-for d in "${DISKS[@]}"; do printf '    %s\n' "$d"; done
-
-if [ -n "$GUM" ]; then
-    CHOICE="$("$GUM" choose --height=12 --cursor.foreground=5 "${DISKS[@]}")"
+if [ -n "$OPT_TARGET" ]; then
+    TARGET="$OPT_TARGET"
 else
-    read -r -p "Target disk (e.g. /dev/sda): " CHOICE
+    mapfile -t DISKS < <(lsblk -dpno NAME,SIZE,MODEL,TRAN 2>/dev/null | awk -v live="$LIVE_DISK" 'NF && $1 != live')
+    [ "${#DISKS[@]}" -gt 0 ] || die "No candidate target disks found."
+    for d in "${DISKS[@]}"; do printf '    %s\n' "$d"; done
+
+    if [ -n "$GUM" ]; then
+        CHOICE="$("$GUM" choose --height=12 --cursor.foreground=5 "${DISKS[@]}")"
+    else
+        read -r -p "Target disk (e.g. /dev/sda): " CHOICE
+    fi
+    [ -n "$CHOICE" ] || { echo "Aborted."; exit 0; }
+    TARGET="$(awk '{print $1}' <<< "$CHOICE")"
 fi
-[ -n "$CHOICE" ] || { echo "Aborted."; exit 0; }
-TARGET="$(awk '{print $1}' <<< "$CHOICE")"
 [ -b "$TARGET" ] || die "not a block device: $TARGET"
 [ "$TARGET" != "$LIVE_DISK" ] || die "refusing to install onto the live medium ($TARGET)."
 
@@ -109,24 +137,26 @@ TARGET_SIZE="$(lsblk -dpno SIZE "$TARGET")"
 box "THIS WILL ERASE $TARGET" \
     "$TARGET  ($TARGET_SIZE)" \
     "All data on this disk will be destroyed."
-if [ -n "$GUM" ]; then
-    TYPED="$("$GUM" input --placeholder "type  $TARGET  to confirm")"
-else
-    read -r -p "Type $TARGET to confirm: " TYPED
+if [ "$OPT_YES" -eq 0 ]; then
+    if [ -n "$GUM" ]; then
+        TYPED="$("$GUM" input --placeholder "type  $TARGET  to confirm")"
+    else
+        read -r -p "Type $TARGET to confirm: " TYPED
+    fi
+    [ "$TYPED" = "$TARGET" ] || die "confirmation did not match."
 fi
-[ "$TYPED" = "$TARGET" ] || die "confirmation did not match."
 
 # ── Identity ───────────────────────────────────────────────────────────────
 title "Target identity"
-HOSTNAME_IN="$(ask 'Hostname' "$DEFAULT_HOSTNAME")"
-NEWUSER="$(ask 'Username' "$LIVE_USER")"
+HOSTNAME_IN="${OPT_HOSTNAME:-$(ask 'Hostname' "$DEFAULT_HOSTNAME")}"
+NEWUSER="${OPT_USER:-$(ask 'Username' "$LIVE_USER")}"
 TZ_DEF="$(timedatectl show -p Timezone --value 2>/dev/null || echo UTC)"
-TZ_IN="$(ask 'Timezone' "$TZ_DEF")"
-LOCALE_IN="$(ask 'Locale' "$DEFAULT_LOCALE")"
+TZ_IN="${OPT_TZ:-$(ask 'Timezone' "$TZ_DEF")}"
+LOCALE_IN="${OPT_LOCALE:-$(ask 'Locale' "$DEFAULT_LOCALE")}"
 KEYMAP_DEF="$(localectl status 2>/dev/null | awk -F': ' '/VC Keymap/{print $2}'; true)"
-KEYMAP_IN="$(ask 'Console keymap' "${KEYMAP_DEF:-us}")"
-ROOTPW="$(askpw 'Root password')"
-USERPW="$(askpw "Password for $NEWUSER")"
+KEYMAP_IN="${OPT_KEYMAP:-$(ask 'Console keymap' "${KEYMAP_DEF:-us}")}"
+ROOTPW="${OPT_ROOTPW:-$(askpw 'Root password')}"
+USERPW="${OPT_USERPW:-$(askpw "Password for $NEWUSER")}"
 [ -n "$ROOTPW" ] && [ -n "$USERPW" ] || die "passwords may not be empty."
 [ -n "$NEWUSER" ] || die "username may not be empty."
 
@@ -136,7 +166,9 @@ box "READY TO INSTALL" \
     "User:     $NEWUSER" \
     "Timezone: $TZ_IN" \
     "Locale:   $LOCALE_IN"
-confirm "Begin installation?" || { echo "Aborted."; exit 0; }
+if [ "$OPT_YES" -eq 0 ]; then
+    confirm "Begin installation?" || { echo "Aborted."; exit 0; }
+fi
 
 cleanup_fail() {
     printf "${RED}  ✗ installation failed — see %s${NC}\n" "$LOG" >&2
