@@ -319,7 +319,8 @@ _build_skel() {
 # Bake oh-my-zsh + the plugins the shipped zshrc expects, so a new user's shell
 # works offline (1-install.sh clones these at install time).
 _bake_oh_my_zsh() {
-    local tmp="$1" omz="$tmp/.oh-my-zsh"
+    local tmp="$1"
+    local omz="$tmp/.oh-my-zsh"
     if ! command -v git >/dev/null 2>&1; then
         _warn "git missing - oh-my-zsh not baked"
         return 0
