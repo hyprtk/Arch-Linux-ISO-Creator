@@ -23,9 +23,10 @@ log() { printf '[customize_airootfs] %s\n' "$*"; }
 # becomes a file conflict and aborts the install. They are staged under
 # /usr/share/hyprtk-iso and installed here, once the packages are in place.
 STAGE=/usr/share/hyprtk-iso
-if [ -d "$STAGE/skel" ]; then
+if [ -f "$STAGE/skel.tar" ]; then
     mkdir -p /etc/skel
-    cp -a --remove-destination "$STAGE/skel/." /etc/skel/
+    # -p keeps the exec bits the builder packed; --no-same-owner roots the files.
+    tar --no-same-owner -xpf "$STAGE/skel.tar" -C /etc/skel
 fi
 if [ -f "$STAGE/os-release" ]; then
     cp -f "$STAGE/os-release" /usr/lib/os-release

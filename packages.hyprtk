@@ -8,6 +8,7 @@
 zsh
 git
 gum
+fzf
 curl
 wget
 jq

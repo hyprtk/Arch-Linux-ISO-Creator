@@ -123,6 +123,7 @@ PROFILE="$BUILD_ROOT/profile"
 WORK="$BUILD_ROOT/work"
 AUR_STAGE="$PROFILE/airootfs/var/cache/hyprtk-aur"
 MTW_STAGE="$PROFILE/airootfs/var/cache/hyprtk/matuwall-root"
+SKEL_TAR="$PROFILE/airootfs/usr/share/hyprtk-iso/skel.tar"
 HOST_CACHE="$REAL_HOME/.cache/hyprtk-iso"
 
 if [ "$PROFILE_ONLY" -eq 1 ]; then KEEP_WORK=1; fi
@@ -198,6 +199,8 @@ _prepare_profile() {
 
     # Merge our airootfs overlay on top of releng's.
     cp -aT "$OVERLAY_DIR" "$PROFILE/airootfs"
+    # The skel is packed into a tar by _build_skel (modes); drop the raw copy.
+    rm -rf "$PROFILE/airootfs/usr/share/hyprtk-iso/skel"
 
     chmod +x "$PROFILE/airootfs/root/customize_airootfs.sh"
     chmod +x "$PROFILE/airootfs/usr/local/bin/hyprtk-first-run"
@@ -252,10 +255,15 @@ _skel_link() {
 
 _build_skel() {
     local src="$1"
-    SKEL="$PROFILE/airootfs/usr/share/hyprtk-iso/skel"
+    # Stage into a scratch dir, then tar it: mkarchiso copies the profile's
+    # airootfs with --no-preserve=mode, which strips the exec bits off every
+    # script and binary in the skel tree (oh-my-posh, gum, all the ~/hyprtk
+    # scripts). A tar archive preserves them; customize extracts it.
+    SKEL="$BUILD_ROOT/skel"
+    rm -rf "$SKEL"
     mkdir -p "$SKEL/hyprtk"
 
-    _info "Vendoring trimmed hyprtk tree into /etc/skel/hyprtk"
+    _info "Vendoring trimmed hyprtk tree"
     rsync -a --delete \
         --exclude='.git/' \
         --exclude='.scratch/' \
@@ -266,6 +274,9 @@ _build_skel() {
         --exclude='configs/root/.cache/' \
         --exclude='configs/root/.local/' \
         "$src"/ "$SKEL/hyprtk"/
+
+    # Committed skel extras (the hyprtk-first-run systemd unit, etc.).
+    cp -aT "$OVERLAY_DIR/usr/share/hyprtk-iso/skel" "$SKEL"
 
     _info "Creating ~/.config symlinks in /etc/skel"
     _skel_link ".config/alacritty"        "configs/alacritty"
@@ -296,7 +307,45 @@ _build_skel() {
     _skel_link ".local/bin"               "installer/standalone"
     _skel_link ".zshrc"                   ".zshrc"
 
-    _ok "Skel hyprtk tree: $(du -sh "$SKEL/hyprtk" | cut -f1)"
+    _bake_oh_my_zsh "$SKEL"
+
+    _info "Packing /etc/skel (tar preserves the exec bits mkarchiso strips)"
+    mkdir -p "$(dirname "$SKEL_TAR")"
+    tar -cpf "$SKEL_TAR" -C "$SKEL" .
+    rm -rf "$SKEL"
+    _ok "Skel archive: $(du -h "$SKEL_TAR" | cut -f1)"
+}
+
+# Bake oh-my-zsh + the plugins the shipped zshrc expects, so a new user's shell
+# works offline (1-install.sh clones these at install time).
+_bake_oh_my_zsh() {
+    local tmp="$1" omz="$tmp/.oh-my-zsh"
+    if ! command -v git >/dev/null 2>&1; then
+        _warn "git missing - oh-my-zsh not baked"
+        return 0
+    fi
+    _info "Baking oh-my-zsh + plugins"
+    rm -rf "$omz"
+    if ! git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$omz" >/dev/null 2>&1; then
+        _warn "oh-my-zsh clone failed - the shell will lack it"
+        return 0
+    fi
+    rm -rf "$omz/.git"
+    mkdir -p "$omz/custom/plugins"
+    local repo name
+    for repo in "zsh-users/zsh-autosuggestions" \
+                "zsh-users/zsh-syntax-highlighting" \
+                "zdharma-continuum/fast-syntax-highlighting"; do
+        name="${repo##*/}"
+        if git clone --depth=1 "https://github.com/$repo" "$omz/custom/plugins/$name" >/dev/null 2>&1; then
+            rm -rf "$omz/custom/plugins/$name/.git"
+        else
+            _warn "plugin clone failed: $name"
+        fi
+    done
+    # hyprtk overrides oh-my-zsh.sh with its own copy (as 1-install.sh does).
+    ln -sfn ../hyprtk/configs/oh-my-zsh/oh-my-zsh.sh "$omz/oh-my-zsh.sh"
+    _ok "oh-my-zsh baked ($(du -sh "$omz" | cut -f1))"
 }
 
 # ── AUR extras (built on the host as the real user) ────────────────────────
