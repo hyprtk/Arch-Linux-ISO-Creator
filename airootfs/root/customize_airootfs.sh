@@ -44,11 +44,17 @@ command -v fc-cache >/dev/null 2>&1 && fc-cache -f >/dev/null 2>&1 || true
 # whole batch. Debug-symbol packages are skipped.
 if compgen -G "/var/cache/hyprtk-aur/*.pkg.tar.*" >/dev/null; then
     log "installing AUR packages from /var/cache/hyprtk-aur"
-    # pacman's disk-space check cannot resolve "/" inside the archiso chroot, so
-    # `pacman -U` aborts with "not enough free disk space". Use a copy of
-    # pacman.conf with CheckSpace disabled for these installs only.
-    NOCS_CONF=/tmp/pacman-nocheckspace.conf
-    sed 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf > "$NOCS_CONF"
+    # pacman's disk-space check cannot resolve "/" inside the archiso chroot and
+    # its keyring is not populated, so `pacman -U` aborts with "not enough free
+    # disk space" / "required key missing from keyring". Both only bite when a
+    # staged package needs dependencies pulled from the repos. Use a throwaway
+    # pacman.conf (CheckSpace off, SigLevel Never) for these installs only, so
+    # the ISO's /etc/pacman.conf is untouched.
+    NOCS_CONF=/tmp/pacman-staged.conf
+    sed -e 's/^CheckSpace/#CheckSpace/' \
+        -e 's/^SigLevel.*/SigLevel = Never/' \
+        -e 's/^\(LocalFileSigLevel\).*/\1 = Optional TrustAll/' \
+        /etc/pacman.conf > "$NOCS_CONF"
     for _pkg in /var/cache/hyprtk-aur/*.pkg.tar.*; do
         case "$_pkg" in *-debug-*) continue ;; esac
         pacman -U --config "$NOCS_CONF" --noconfirm "$_pkg" \
