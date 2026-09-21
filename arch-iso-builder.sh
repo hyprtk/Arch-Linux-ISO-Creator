@@ -160,7 +160,7 @@ _ensure_host_deps() {
 _resolve_hyprtk() {
     local c
     for c in "$HYPRTK_DIR" "$REAL_HOME/hyprtk" \
-             "$REAL_HOME/Projects/AI-Projects/hyprtk-merged" \
+             "$REAL_HOME/Projects/hyprtk-merged" \
              "$REAL_HOME/.local/share/hyprtk"; do
         if [ -n "$c" ] && [ -d "$c/hypr" ] && [ -d "$c/configs" ]; then
             printf '%s' "$c"; return
