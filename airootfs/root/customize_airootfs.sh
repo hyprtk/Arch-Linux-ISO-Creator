@@ -31,6 +31,10 @@ if [ -f "$STAGE/os-release" ]; then
     cp -f "$STAGE/os-release" /usr/lib/os-release
 fi
 
+# mkarchiso copies the profile airootfs with --no-preserve=mode, so the exec
+# bits on our overlay scripts are lost; re-assert them here.
+chmod 0755 /usr/local/bin/hyprtk-first-run /usr/local/bin/hyprtk-deploy
+
 # ── 1. Fonts ───────────────────────────────────────────────────────────────
 if [ -d /etc/skel/hyprtk/assets/fonts ]; then
     mkdir -p /usr/share/fonts/hyprtk
