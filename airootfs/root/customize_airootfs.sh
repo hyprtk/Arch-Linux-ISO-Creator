@@ -44,10 +44,17 @@ command -v fc-cache >/dev/null 2>&1 && fc-cache -f >/dev/null 2>&1 || true
 # whole batch. Debug-symbol packages are skipped.
 if compgen -G "/var/cache/hyprtk-aur/*.pkg.tar.*" >/dev/null; then
     log "installing AUR packages from /var/cache/hyprtk-aur"
+    # pacman's disk-space check cannot resolve "/" inside the archiso chroot, so
+    # `pacman -U` aborts with "not enough free disk space". Use a copy of
+    # pacman.conf with CheckSpace disabled for these installs only.
+    NOCS_CONF=/tmp/pacman-nocheckspace.conf
+    sed 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf > "$NOCS_CONF"
     for _pkg in /var/cache/hyprtk-aur/*.pkg.tar.*; do
         case "$_pkg" in *-debug-*) continue ;; esac
-        pacman -U --noconfirm "$_pkg" || log "WARN: failed to install $(basename "$_pkg")"
+        pacman -U --config "$NOCS_CONF" --noconfirm "$_pkg" \
+            || log "WARN: failed to install $(basename "$_pkg")"
     done
+    rm -f "$NOCS_CONF"
 fi
 
 # ── 2b. matuwall (built from source on the host) ───────────────────────────
