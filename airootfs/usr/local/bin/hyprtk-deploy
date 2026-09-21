@@ -44,6 +44,7 @@ RED='\033[1;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
 log()  { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*" >> "$LOG"; }
 info() { printf "${CYAN}  → ${WHITE}%s${NC}\n" "$*"; log "$*"; }
 ok()   { printf "${CYAN}  ✓ ${WHITE}%s${NC}\n" "$*"; log "OK: $*"; }
+warn() { printf "${YELLOW}  ! ${WHITE}%s${NC}\n" "$*"; log "WARN: $*"; }
 die()  { printf "${RED}  ✗ ${WHITE}%s${NC}\n" "$*" >&2; log "FATAL: $*"; exit 1; }
 
 box() {
@@ -235,18 +236,33 @@ mkdir -p "$MNT"/dev "$MNT"/proc "$MNT"/sys "$MNT"/run \
          "$MNT"/tmp "$MNT"/mnt "$MNT"/media "$MNT"/var/tmp "$MNT"/lost+found
 for fs in dev proc sys run; do mount --rbind "/$fs" "$MNT/$fs"; done
 
-# The live initramfs is built from archiso hooks and will not boot an installed
-# system. Restore a stock mkinitcpio.conf before regenerating.
-if grep -q 'archiso' "$MNT/etc/mkinitcpio.conf" 2>/dev/null; then
-    cat > "$MNT/etc/mkinitcpio.conf" <<'MKINIT'
-# vim:set ft=sh
-MODULES=()
-BINARIES=()
-FILES=()
-HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck)
-MKINIT
-    ok "restored a stock mkinitcpio.conf (archiso hooks removed)"
-fi
+# The live system keeps its kernel on the ISO's own boot medium (not in the
+# squashfs /boot) and its mkinitcpio presets are archiso-specific, so the clone
+# has no kernel and `mkinitcpio -P` would build the wrong initramfs. Rebuild a
+# stock boot setup:
+#   * restore /boot/vmlinuz-linux from the kernel module tree
+#   * drop the archiso preset/config and install the stock linux preset
+for kdir in "$MNT"/usr/lib/modules/*/; do
+    [ -d "$kdir" ] || continue
+    kver="$(basename "$kdir")"
+    if [ -f "$kdir/vmlinuz" ]; then
+        cp -f "$kdir/vmlinuz" "$MNT/boot/vmlinuz-linux"
+        ok "restored /boot/vmlinuz-linux (kernel $kver)"
+    fi
+done
+[ -f "$MNT/boot/vmlinuz-linux" ] || warn "no kernel found under /usr/lib/modules - the system may not boot"
+rm -f "$MNT/etc/mkinitcpio.conf.d/archiso.conf"
+rmdir "$MNT/etc/mkinitcpio.conf.d" 2>/dev/null || true
+mkdir -p "$MNT/etc/mkinitcpio.d"
+cat > "$MNT/etc/mkinitcpio.d/linux.preset" <<'PRESET'
+# mkinitcpio preset file for the 'linux' package
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux"
+PRESETS=('default' 'fallback')
+default_image="/boot/initramfs-linux.img"
+fallback_image="/boot/initramfs-linux-fallback.img"
+fallback_options="-S autodetect"
+PRESET
 spin "Regenerating the initramfs..." "arch-chroot '$MNT' mkinitcpio -P"
 
 # ── Bootloader ─────────────────────────────────────────────────────────────
