@@ -171,16 +171,31 @@ if [ "$OPT_YES" -eq 0 ]; then
     confirm "Begin installation?" || { echo "Aborted."; exit 0; }
 fi
 
+# Detach anything under $MNT (including the chroot bind mounts). Recursive
+# unmount can fail on nested/busy mounts, so fall back to a lazy detach.
+unmount_target() {
+    swapoff "$MNT/swapfile" 2>/dev/null || true
+    local i
+    for i in 1 2 3; do
+        umount -R "$MNT" 2>/dev/null && break
+        umount -Rl "$MNT" 2>/dev/null || true
+        sleep 1
+    done
+    return 0
+}
+
 cleanup_fail() {
     printf "${RED}  ✗ installation failed — see %s${NC}\n" "$LOG" >&2
-    for fs in dev proc sys run; do umount -R "$MNT/$fs" 2>/dev/null || true; done
-    umount -R "$MNT" 2>/dev/null || true
+    log "FATAL: unmounting and aborting"
+    unmount_target
     exit 1
 }
 trap cleanup_fail ERR
 
 # ── Partition ──────────────────────────────────────────────────────────────
 title "Partitioning $TARGET"
+# Clear any stale mounts from an interrupted earlier attempt.
+unmount_target
 spin "Creating the GPT partition table..." \
     "sgdisk --zap-all '$TARGET' && \
      sgdisk -n 1:0:+1MiB    -t 1:ef02 -c 1:bios_grub '$TARGET' && \
