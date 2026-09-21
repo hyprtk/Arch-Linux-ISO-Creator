@@ -236,20 +236,25 @@ ok "live system cloned"
 # ── fstab / swap ───────────────────────────────────────────────────────────
 title "Configuring fstab and swap"
 genfstab -U "$MNT" >> "$MNT/etc/fstab"
-spin "Creating a $SWAP_SIZE swapfile..." \
-    "rm -f '$MNT/swapfile' && fallocate -l $SWAP_SIZE '$MNT/swapfile' && \
-     chmod 600 '$MNT/swapfile' && mkswap '$MNT/swapfile' >> '$LOG' 2>&1 && \
-     printf '/swapfile none swap defaults 0 0\n' >> '$MNT/etc/fstab'"
 # The live medium IS the bootloader read path; never inherit its swap entry.
 sed -i '/\/run\/archiso/d' "$MNT/etc/fstab"
+# Swapfile created directly (not through spin: spin appends `>> log`, which
+# would override the command's own trailing redirection and swallow this line).
+info "Creating a $SWAP_SIZE swapfile..."
+rm -f "$MNT/swapfile"
+fallocate -l "$SWAP_SIZE" "$MNT/swapfile"
+chmod 600 "$MNT/swapfile"
+mkswap "$MNT/swapfile" >> "$LOG" 2>&1
+printf '/swapfile none swap defaults 0 0\n' >> "$MNT/etc/fstab"
+ok "swapfile created"
 
 # ── Chroot preparation ─────────────────────────────────────────────────────
 title "Preparing the chroot"
 # /dev /proc /sys /run were excluded from the clone, so recreate the empty
 # mount points (and the other excluded top-level dirs) the chroot and boot need.
+# arch-chroot mounts the API filesystems itself.
 mkdir -p "$MNT"/dev "$MNT"/proc "$MNT"/sys "$MNT"/run \
          "$MNT"/tmp "$MNT"/mnt "$MNT"/media "$MNT"/var/tmp "$MNT"/lost+found
-for fs in dev proc sys run; do mount --rbind "/$fs" "$MNT/$fs"; done
 
 # The live system keeps its kernel on the ISO's own boot medium (not in the
 # squashfs /boot) and its mkinitcpio presets are archiso-specific, so the clone
@@ -282,10 +287,27 @@ spin "Regenerating the initramfs..." "arch-chroot '$MNT' mkinitcpio -P"
 
 # ── Bootloader ─────────────────────────────────────────────────────────────
 title "Installing the bootloader (GRUB, UEFI + BIOS)"
-spin "GRUB/UEFI..." \
-    "arch-chroot '$MNT' grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --recheck"
-spin "GRUB/BIOS..." \
-    "arch-chroot '$MNT' grub-install --target=i386-pc --recheck '$TARGET'"
+uefi_ok=0; bios_ok=0
+# On a machine with no EFI firmware the normal UEFI install fails at the NVRAM
+# step; retry with --no-nvram (writes the EFI files, skips efibootmgr).
+if spin "GRUB/UEFI..." \
+        "arch-chroot '$MNT' grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --recheck"; then
+    uefi_ok=1
+elif spin "GRUB/UEFI (no NVRAM)..." \
+        "arch-chroot '$MNT' grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --no-nvram --recheck"; then
+    uefi_ok=1
+else
+    warn "GRUB UEFI install failed (continuing)"
+fi
+if spin "GRUB/BIOS..." \
+        "arch-chroot '$MNT' grub-install --target=i386-pc --recheck '$TARGET'"; then
+    bios_ok=1
+else
+    warn "GRUB BIOS install failed (continuing)"
+fi
+if [ "$uefi_ok" -eq 0 ] && [ "$bios_ok" -eq 0 ]; then
+    die "GRUB installation failed for both UEFI and BIOS"
+fi
 spin "Generating grub.cfg..." "arch-chroot '$MNT' grub-mkconfig -o /boot/grub/grub.cfg"
 
 # ── Identity ───────────────────────────────────────────────────────────────
