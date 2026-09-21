@@ -27,6 +27,11 @@ PKGS_EXTRA="$SELF_DIR/packages.hyprtk"
 AUR_LIST="$SELF_DIR/aur-packages.txt"
 ORIG_ARGS=("$@")
 
+# Official-repo build backends needed by the curated AUR list. makepkg runs
+# with --nodeps (so it never touches the host), which means build backends have
+# to be present already. Keep in sync with aur-packages.txt.
+AUR_HOST_DEPS="python-poetry-core"
+
 # ── Defaults ───────────────────────────────────────────────────────────────
 ISO_NAME="${ISO_NAME:-hyprtk}"
 ISO_VERSION="${ISO_VERSION:-$(date +%Y.%m.%d)}"
@@ -312,6 +317,9 @@ _build_aur() {
     fi
     pacman -Qi base-devel >/dev/null 2>&1 \
         || _warn "base-devel not installed - some AUR builds will fail"
+    # shellcheck disable=SC2086
+    pacman -S --needed --noconfirm $AUR_HOST_DEPS >/dev/null 2>&1 \
+        || _warn "could not install AUR host build deps: $AUR_HOST_DEPS"
 
     _info "Building ${#pkgs[@]} AUR package(s) as $REAL_USER (best-effort)"
     local srcdir="$HOST_CACHE/aur"
