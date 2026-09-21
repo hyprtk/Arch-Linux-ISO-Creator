@@ -327,17 +327,48 @@ printf '%s\n' "$HOSTNAME_IN" > "$MNT/etc/hostname"
 arch-chroot "$MNT" systemd-machine-id-setup >/dev/null 2>&1 || true
 
 title "Creating the user"
-if arch-chroot "$MNT" id "$LIVE_USER" >/dev/null 2>&1; then
-    arch-chroot "$MNT" userdel -r "$LIVE_USER" >/dev/null 2>&1 \
-        || arch-chroot "$MNT" userdel "$LIVE_USER" >/dev/null 2>&1 || true
+# Remove the live account and anything that would collide with the target name
+# (installing *as* the live user, e.g. 'hyprtk', is common).
+for _u in "$LIVE_USER" "$NEWUSER"; do
+    if arch-chroot "$MNT" id "$_u" >/dev/null 2>&1; then
+        arch-chroot "$MNT" userdel -r "$_u" >/dev/null 2>&1 \
+            || arch-chroot "$MNT" userdel "$_u" >/dev/null 2>&1 || true
+    fi
+done
+if arch-chroot "$MNT" getent group "$NEWUSER" >/dev/null 2>&1; then
+    arch-chroot "$MNT" groupdel "$NEWUSER" >/dev/null 2>&1 || true
 fi
 arch-chroot "$MNT" useradd -m -G wheel -s /bin/zsh "$NEWUSER"
 printf '%s:%s\n' "$NEWUSER" "$USERPW" | arch-chroot "$MNT" chpasswd
 printf 'root:%s\n' "$ROOTPW" | arch-chroot "$MNT" chpasswd
-# An installed box must not keep passwordless sudo.
 rm -f "$MNT/etc/sudoers.d/10-hyprtk-live"
 printf '%%wheel ALL=(ALL:ALL) ALL\n' > "$MNT/etc/sudoers.d/10-wheel"
 chmod 0440 "$MNT/etc/sudoers.d/10-wheel"
+
+# Seed the pywal cache from the live user (already generated at ISO build time)
+# so the first boot is themed even if the bar/wal provisioning below cannot run
+# (e.g. no network). Hyprland hard-errors when ~/.cache/wal is missing.
+if [ -d "/home/$LIVE_USER/.cache/wal" ]; then
+    mkdir -p "$MNT/home/$NEWUSER/.cache"
+    cp -a "/home/$LIVE_USER/.cache/wal" "$MNT/home/$NEWUSER/.cache/" 2>/dev/null || true
+    if [ -f "/home/$LIVE_USER/.cache/current-wallpaper.png" ]; then
+        cp -f "/home/$LIVE_USER/.cache/current-wallpaper.png" "$MNT/home/$NEWUSER/.cache/" 2>/dev/null || true
+    fi
+    arch-chroot "$MNT" chown -R "$NEWUSER" "/home/$NEWUSER/.cache" 2>/dev/null || true
+fi
+
+# Provision the bar + pywal cache now, so the first graphical login is already
+# themed: Hyprland reads ~/.cache/wal at startup and errors out if it is missing,
+# while the hyprtk-first-run unit only fires after the session is up.
+title "Provisioning $NEWUSER's desktop"
+if arch-chroot "$MNT" runuser -u "$NEWUSER" -- env \
+        HOME="/home/$NEWUSER" USER="$NEWUSER" LOGNAME="$NEWUSER" \
+        PATH="/home/$NEWUSER/.local/bin:/usr/local/bin:/usr/bin" \
+        /usr/local/bin/hyprtk-first-run >> "$LOG" 2>&1; then
+    ok "desktop provisioned for $NEWUSER"
+else
+    warn "desktop provisioning failed; $NEWUSER will retry on first login"
+fi
 
 title "Enabling services"
 for svc in NetworkManager bluetooth sddm systemd-timesyncd; do
