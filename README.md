@@ -74,16 +74,22 @@ aur-packages.txt           # AUR extras, built on the host
 airootfs/                  # overlay merged onto the releng profile
   etc/sddm.conf.d/         # autologin + Wayland greeter
   etc/sudoers.d/           # live-user passwordless sudo
-  etc/skel/                # generated at build time: ~/hyprtk + ~/.config links
-  etc/skel/.config/systemd/user/   # hyprtk-first-run unit
-  root/customize_airootfs.sh       # creates the live user, installs bar/pywal
-  usr/lib/os-release               # "Hyprtk on (Arch Linux)" branding
+  usr/share/hyprtk-iso/    # staged: generated skel + os-release
   usr/local/bin/hyprtk-first-run   # per-user first-run setup
+  root/customize_airootfs.sh       # installs the staged files, creates the live
+                                   # user, installs bar/pywal, enables services
 ```
 
 The builder copies `releng`, edits `profiledef.sh`, merges the package lists,
-generates `/etc/skel` from your hyprtk checkout (trimming `assets/screenshots`,
+generates the skel tree from your hyprtk checkout (trimming `assets/screenshots`,
 `assets/papirus-icons`, `distro/` and the root caches), then runs `mkarchiso`.
+
+`/etc/skel` and `/usr/lib/os-release` are staged under `usr/share/hyprtk-iso/`
+rather than shipped directly in the overlay: archiso copies `airootfs` into the
+new root *before* pacstrap, so a path that a package also owns (`grml-zsh-config`
+ships `/etc/skel/.zshrc`, `filesystem` ships `/usr/lib/os-release`) would be a
+file conflict. `customize_airootfs.sh` installs them after the packages, then
+deletes the staging dir.
 
 ## AUR extras
 

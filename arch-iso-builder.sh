@@ -246,7 +246,7 @@ _skel_link() {
 
 _build_skel() {
     local src="$1"
-    SKEL="$PROFILE/airootfs/etc/skel"
+    SKEL="$PROFILE/airootfs/usr/share/hyprtk-iso/skel"
     mkdir -p "$SKEL/hyprtk"
 
     _info "Vendoring trimmed hyprtk tree into /etc/skel/hyprtk"

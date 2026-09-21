@@ -16,6 +16,21 @@ LIVE_HOME="/home/$LIVE_USER"
 
 log() { printf '[customize_airootfs] %s\n' "$*"; }
 
+# ── 0. Staged overlay files ────────────────────────────────────────────────
+# /etc/skel and /usr/lib/os-release cannot live in the airootfs overlay: archiso
+# copies airootfs into the new root *before* pacstrap, so any path a package also
+# owns (grml-zsh-config's /etc/skel/.zshrc, filesystem's /usr/lib/os-release)
+# becomes a file conflict and aborts the install. They are staged under
+# /usr/share/hyprtk-iso and installed here, once the packages are in place.
+STAGE=/usr/share/hyprtk-iso
+if [ -d "$STAGE/skel" ]; then
+    mkdir -p /etc/skel
+    cp -a --remove-destination "$STAGE/skel/." /etc/skel/
+fi
+if [ -f "$STAGE/os-release" ]; then
+    cp -f "$STAGE/os-release" /usr/lib/os-release
+fi
+
 # ── 1. Fonts ───────────────────────────────────────────────────────────────
 if [ -d /etc/skel/hyprtk/assets/fonts ]; then
     mkdir -p /usr/share/fonts/hyprtk
@@ -100,6 +115,6 @@ systemctl enable sddm.service
 systemctl set-default graphical.target
 
 # ── 7. Shrink the image: drop the staged build caches ──────────────────────
-rm -rf /var/cache/hyprtk-aur /var/cache/hyprtk
+rm -rf /var/cache/hyprtk-aur /var/cache/hyprtk "$STAGE"
 
 log "done"
