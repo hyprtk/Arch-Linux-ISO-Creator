@@ -21,8 +21,13 @@ tumbler-extra-thumbnailers
 ## Desktop conveniences
 trizen
 pacseek
-waypaper
 pfetch
+
+## waypaper and its AUR dependencies (deps must be listed first — the chroot
+## installs them one at a time in this order)
+python-screeninfo
+python-imageio-ffmpeg
+waypaper
 
 ## Heavier optional apps — uncomment to bake in (large ISO / long build)
 #brave-bin

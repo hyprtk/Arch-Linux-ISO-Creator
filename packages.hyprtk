@@ -39,7 +39,8 @@ weston
 hyprpicker
 hyprsunset
 swayidle
-swaylock
+# swaylock comes from the AUR swaylock-effects package (see aur-packages.txt);
+# installing the repo swaylock too would conflict on /usr/bin/swaylock.
 swappy
 cliphist
 wl-clipboard

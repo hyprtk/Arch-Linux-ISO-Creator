@@ -39,10 +39,15 @@ fi
 command -v fc-cache >/dev/null 2>&1 && fc-cache -f >/dev/null 2>&1 || true
 
 # ── 2a. Host-built AUR packages ────────────────────────────────────────────
+# Installed one file at a time: pacman treats `-U a b c` as a single
+# transaction, so one package with an unresolvable dependency would abort the
+# whole batch. Debug-symbol packages are skipped.
 if compgen -G "/var/cache/hyprtk-aur/*.pkg.tar.*" >/dev/null; then
     log "installing AUR packages from /var/cache/hyprtk-aur"
-    pacman -U --noconfirm --needed /var/cache/hyprtk-aur/*.pkg.tar.* \
-        || log "WARN: some AUR packages failed to install"
+    for _pkg in /var/cache/hyprtk-aur/*.pkg.tar.*; do
+        case "$_pkg" in *-debug-*) continue ;; esac
+        pacman -U --noconfirm "$_pkg" || log "WARN: failed to install $(basename "$_pkg")"
+    done
 fi
 
 # ── 2b. matuwall (built from source on the host) ───────────────────────────
