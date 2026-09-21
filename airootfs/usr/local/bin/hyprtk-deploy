@@ -229,6 +229,10 @@ sed -i '/\/run\/archiso/d' "$MNT/etc/fstab"
 
 # ── Chroot preparation ─────────────────────────────────────────────────────
 title "Preparing the chroot"
+# /dev /proc /sys /run were excluded from the clone, so recreate the empty
+# mount points (and the other excluded top-level dirs) the chroot and boot need.
+mkdir -p "$MNT"/dev "$MNT"/proc "$MNT"/sys "$MNT"/run \
+         "$MNT"/tmp "$MNT"/mnt "$MNT"/media "$MNT"/var/tmp "$MNT"/lost+found
 for fs in dev proc sys run; do mount --rbind "/$fs" "$MNT/$fs"; done
 
 # The live initramfs is built from archiso hooks and will not boot an installed

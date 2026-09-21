@@ -201,6 +201,7 @@ _prepare_profile() {
 
     chmod +x "$PROFILE/airootfs/root/customize_airootfs.sh"
     chmod +x "$PROFILE/airootfs/usr/local/bin/hyprtk-first-run"
+    chmod +x "$PROFILE/airootfs/usr/local/bin/hyprtk-deploy"
     chmod 0440 "$PROFILE/airootfs/etc/sudoers.d/10-hyprtk-live"
 }
 
