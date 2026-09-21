@@ -45,6 +45,8 @@ if ! id -u "$LIVE_USER" >/dev/null 2>&1; then
         -s /bin/zsh "$LIVE_USER"
 fi
 echo "$LIVE_USER:hyprtk" | chpasswd
+# Root password for the live media (console/tty login; SDDM hides uid 0).
+echo "root:toor" | chpasswd
 chown -R "$LIVE_USER:users" "$LIVE_HOME"
 
 # sudoers drop-in must have the right mode (git does not track 0440).

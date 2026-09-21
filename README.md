@@ -55,6 +55,7 @@ without waiting for a full `mkarchiso` run.
 ## What the live ISO looks like
 
 - **Live user:** `hyprtk` (password `hyprtk`, passwordless sudo)
+- **Root:** password `toor` (console/tty login; SDDM hides uid 0)
 - **Login:** SDDM autologins to the **hyprland** session — no greeter
 - **Theming:** pywal palette is generated at build time from
   `assets/Wallpapers/default.png`, so the bar, rofi, lock screen and icons are
