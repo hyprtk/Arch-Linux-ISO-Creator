@@ -65,6 +65,24 @@ without waiting for a full `mkarchiso` run.
   a one-shot systemd user unit (`hyprtk-first-run`) installs the bar and runs
   pywal on first login
 
+## Install to disk
+
+The live session carries an offline installer, **`hyprtk-deploy`** (also in the
+bar's app menu as *Install hyprtk to disk*). It clones the running live system to
+a disk — no network, no separate package set, installed == live:
+
+- **Target:** GPT, single disk — 1 MiB `bios_grub` + 1 GiB FAT32 ESP + ext4 root
+  + a 4 GiB swapfile (no LUKS)
+- **Clone:** `rsync` the live root (keeps `/usr`, `/etc`, `/etc/skel`,
+  `/var/lib/pacman`; drops volatile paths and `/home/*`)
+- **Bootloader:** GRUB for both UEFI and BIOS
+- **Identity:** prompts hostname/user/passwords/timezone/locale/keymap, creates
+  the user, and strips the live-only account, autologin and passwordless sudo
+- Refuses to target the live medium and requires the device name typed to confirm
+
+It is a `gum` TUI; run it from the desktop entry or `sudo hyprtk-deploy` in a
+terminal.
+
 ## How it fits together
 
 ```
@@ -75,6 +93,8 @@ airootfs/                  # overlay merged onto the releng profile
   etc/sddm.conf.d/         # autologin + Wayland greeter
   etc/sudoers.d/           # live-user passwordless sudo
   usr/share/hyprtk-iso/    # staged: generated skel + os-release
+  usr/local/bin/hyprtk-deploy      # offline live-to-disk installer
+  usr/share/applications/hyprtk-deploy.desktop
   usr/local/bin/hyprtk-first-run   # per-user first-run setup
   root/customize_airootfs.sh       # installs the staged files, creates the live
                                    # user, installs bar/pywal, enables services

@@ -132,6 +132,9 @@ systemctl enable systemd-timesyncd.service 2>/dev/null || true
 systemctl enable sddm.service
 systemctl set-default graphical.target
 
+# gum on PATH for hyprtk-deploy (root's PATH does not include ~/.local/bin).
+ln -sf /etc/skel/hyprtk/installer/standalone/gum /usr/local/bin/gum
+
 # ── 7. Shrink the image: drop the staged build caches ──────────────────────
 rm -rf /var/cache/hyprtk-aur /var/cache/hyprtk "$STAGE"
 
