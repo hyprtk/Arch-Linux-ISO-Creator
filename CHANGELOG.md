@@ -14,6 +14,8 @@ Dates are in `YYYY-MM-DD` format.
 - **Default hyprtk source is now `~/hyprtk`**, falling back to cloning
   `hyprtk/dotfiles` when it is absent. `--hyprtk-dir` / `$HYPRTK_DIR` still take
   precedence.
+- **`python-dbus-next` is baked into the image**, so the bar's venv finds it in
+  `--system-site-packages` and first login (`hyprtk-first-run`) needs no network.
 
 ### Added
 
@@ -37,6 +39,15 @@ Dates are in `YYYY-MM-DD` format.
   menu did nothing. They are baked into `/etc/skel` again (the ISO grows by only
   ~4 MiB because squashfs dedups the icon data against the packaged
   `papirus-icon-theme`).
+- **The bar (and rofi app menu) never launched on an installed system.** On the
+  build host `~/.local/bin` is a symlink into `installer/standalone`, so running
+  the bar installer wrote its launchers there; the skel rsync then vendored those
+  host-specific launchers (with hardcoded `/home/<builder>` paths) into the ISO.
+  On the target the stale `~/.local/bin/hyprtk-bar` existed and was executable
+  while the venv behind it was gone, and `hyprtk-first-run` gated on that
+  launcher — so it skipped the install entirely. The builder now excludes the
+  generated launchers, and first-run gates on the venv, clears stale launchers
+  and only stamps after a successful install.
 
 ## [2026-09-21]
 

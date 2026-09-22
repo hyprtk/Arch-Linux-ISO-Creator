@@ -83,6 +83,9 @@ python-cairo
 python-psutil
 python-rich
 python-click
+# Baked so the bar's venv finds dbus-next in --system-site-packages and pip
+# never needs the network: first login (hyprtk-first-run) is fully offline.
+python-dbus-next
 
 ## Graphics / portability (all three drivers so the ISO boots anywhere)
 mesa
