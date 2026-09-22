@@ -144,7 +144,7 @@ airootfs/                  # overlay merged onto the releng profile
 
 The builder copies `releng`, edits `profiledef.sh`, merges the package lists,
 generates the skel tree from your hyprtk checkout (trimming `assets/screenshots`,
-`assets/papirus-icons`, `distro/` and the root caches), then runs `mkarchiso`.
+`distro/` and the root caches), then runs `mkarchiso`.
 
 `/etc/skel` and `/usr/lib/os-release` are staged under `usr/share/hyprtk-iso/`
 rather than shipped directly in the overlay: archiso copies `airootfs` into the

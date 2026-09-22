@@ -266,7 +266,6 @@ _build_skel() {
         --exclude='.scratch/' \
         --exclude='install.log' \
         --exclude='assets/screenshots/' \
-        --exclude='assets/papirus-icons/' \
         --exclude='distro/' \
         --exclude='configs/root/.cache/' \
         --exclude='configs/root/.local/' \
