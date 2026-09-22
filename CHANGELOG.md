@@ -17,14 +17,17 @@ Dates are in `YYYY-MM-DD` format.
 
 ### Added
 
-- **`hyprtk-usb`** — a host-side USB writer. It `dd`s the iso-hybrid (MBR) ISO to
-  a disk and appends a 1 MiB-aligned `hyprtk-persist` ext4 partition in the free
-  space, preserving the ISO's two MBR entries (iso9660 + EFI). Flags:
-  `--no-persist`, `--size 8G|50%|rest`, `--refresh` (keep an existing persistence
-  partition), `--dry-run`. Refuses partitions, mounted disks, the `/` disk,
-  too-small targets and bad sizes. The equivalent manual procedure is documented
-  in the README.
 - **`CHANGELOG.md`** (this file).
+- **USB writing + persistence** is provided by the standalone
+  [hyprtk-usb](https://github.com/hyprtk/hyprtk-usb) Go app; the README's *Make a
+  USB stick* section points at it.
+
+### Removed
+
+- The bundled `hyprtk-usb` shell writer — superseded by the standalone
+  [hyprtk-usb](https://github.com/hyprtk/hyprtk-usb) Go app (`dd` the ISO, append
+  a 1 MiB-aligned `hyprtk-persist` ext4 partition, preserving the ISO's MBR
+  entries).
 
 ### Fixed
 

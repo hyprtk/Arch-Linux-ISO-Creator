@@ -85,29 +85,26 @@ terminal.
 
 ## Make a USB stick (optional persistence)
 
-`hyprtk-usb` writes the ISO to a USB stick and, by default, adds the
-**`hyprtk-persist`** partition that the ISO's *Hyprtk live with persistence* boot
-entry looks for. The ISO itself is unchanged and stays ephemeral by default.
+Use **[hyprtk-usb](https://github.com/hyprtk/hyprtk-usb)** — a separate Go app that
+writes the ISO to a USB stick and, by default, adds the **`hyprtk-persist`**
+partition the ISO's *Hyprtk live with persistence* boot entry looks for. The ISO
+itself is unchanged and stays ephemeral by default.
 
 ```bash
-sudo ./hyprtk-usb --iso ~/Documents/Isos/hyprtk-*.iso --target /dev/sdX
-```
+# interactive TUI
+hyprtk-usb
 
-| Option | Meaning |
-| --- | --- |
-| `-y`, `--yes` | Skip the confirmation prompt |
-| `--iso FILE` | ISO to write (default: newest `hyprtk-*.iso` in `~/Documents/Isos` or `~`) |
-| `--target DEV` | Whole disk (e.g. `/dev/sda`); partitions are refused |
-| `--no-persist` | Write the ISO only |
-| `--size SIZE` | Persistence size: `8G`, `50%`, or `rest` (default) |
-| `--refresh` | Re-write the ISO onto a stick that already has a `hyprtk-persist` partition, keeping it |
-| `--dry-run` | Print the plan; change nothing |
+# or non-interactive
+sudo hyprtk-usb --iso ~/Documents/Isos/hyprtk-*.iso --target /dev/sda
+```
 
 It `dd`s the ISO (iso-hybrid, MBR) with the stick's existing two MBR entries
 (the iso9660 and the EFI FAT) preserved verbatim, then appends a 1 MiB-aligned
 Linux partition in the free space and formats it `ext4 -L hyprtk-persist`. Boot
 the stick and pick **Hyprtk live with persistence**; the default entry boots
-ephemeral as before. Requires `dd`, `sfdisk`, `mkfs.ext4`, `blkid`.
+ephemeral as before. See the
+[hyprtk-usb README](https://github.com/hyprtk/hyprtk-usb#readme) for the flags
+(`--no-persist`, `--size`, `--refresh`, `--dry-run`) and safety notes.
 
 ### Doing it by hand
 
@@ -128,7 +125,6 @@ sudo mkfs.ext4 -L hyprtk-persist "${DEV}3"     # nvme/mmcblk use "${DEV}p3"
 
 ```
 hyprtk-iso-builder.sh      # the builder
-hyprtk-usb                 # host-side USB writer (+ persistence partition)
 packages.hyprtk            # official packages baked into the ISO
 aur-packages.txt           # AUR extras, built on the host
 airootfs/                  # overlay merged onto the releng profile
