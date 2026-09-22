@@ -73,8 +73,7 @@ hyprtk Arch Linux ISO builder
 Options:
   -y, --yes                Do not ask for confirmation.
   --hyprtk-dir DIR         hyprtk dotfiles source (default: $HYPRTK_DIR,
-                           ~/hyprtk, ~/Projects/AI-Projects/hyprtk-merged,
-                           else cloned from hyprtk/dotfiles).
+                           ~/hyprtk, else cloned from hyprtk/dotfiles).
   --iso-name NAME          ISO file name (default: hyprtk).
   --iso-label LABEL        ISO label, <=32 chars (default: HYPRTK_<YYYYMM>).
   --out-dir DIR            Where the ISO is written (default: your home).
@@ -159,9 +158,7 @@ _ensure_host_deps() {
 # ── Locate the hyprtk dotfiles source ──────────────────────────────────────
 _resolve_hyprtk() {
     local c
-    for c in "$HYPRTK_DIR" "$REAL_HOME/hyprtk" \
-             "$REAL_HOME/Projects/hyprtk-merged" \
-             "$REAL_HOME/.local/share/hyprtk"; do
+    for c in "$HYPRTK_DIR" "$REAL_HOME/hyprtk"; do
         if [ -n "$c" ] && [ -d "$c/hypr" ] && [ -d "$c/configs" ]; then
             printf '%s' "$c"; return
         fi

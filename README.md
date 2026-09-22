@@ -39,7 +39,7 @@ directory.
 | Option | Meaning |
 | --- | --- |
 | `-y`, `--yes` | Skip the confirmation prompt |
-| `--hyprtk-dir DIR` | hyprtk dotfiles source (default: `$HYPRTK_DIR`, `~/hyprtk`, `~/Projects/AI-Projects/hyprtk-merged`, else cloned from `hyprtk/dotfiles`) |
+| `--hyprtk-dir DIR` | hyprtk dotfiles source (default: `$HYPRTK_DIR`, `~/hyprtk`, else cloned from `hyprtk/dotfiles`) |
 | `--iso-name NAME` | ISO file name (default `hyprtk`) |
 | `--iso-label LABEL` | ISO label, max 32 chars (default `HYPRTK_<YYYYMM>`) |
 | `--out-dir DIR` | Where the ISO is written (default: your home) |
