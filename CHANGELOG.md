@@ -10,6 +10,7 @@ Dates are in `YYYY-MM-DD` format.
 - **Repository renamed** `Arch-Linux-ISO-Creator` → `Hyprtk-ISO-Creator`
   (<https://github.com/hyprtk/Hyprtk-ISO-Creator>). The README clone URL and the
   `git` remote are updated; GitHub keeps a redirect from the old name.
+- **Builder renamed** `arch-iso-builder.sh` → `hyprtk-iso-builder.sh`.
 - **Default hyprtk source is now `~/hyprtk`**, falling back to cloning
   `hyprtk/dotfiles` when it is absent. `--hyprtk-dir` / `$HYPRTK_DIR` still take
   precedence.

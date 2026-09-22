@@ -13,8 +13,8 @@
 #     user `hyprtk` is created from that skel
 #   * SDDM autologin straight into a pywal-themed Hyprland session
 #
-# Usage:  ./arch-iso-builder.sh [options]
-#         ./arch-iso-builder.sh --profile-only     # assemble profile, don't build
+# Usage:  ./hyprtk-iso-builder.sh [options]
+#         ./hyprtk-iso-builder.sh --profile-only     # assemble profile, don't build
 #
 # Run as your normal user; the script re-execs itself with sudo.
 ###############################################################################

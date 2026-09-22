@@ -27,7 +27,7 @@ The builder starts from the stock archiso `releng` profile and adds:
 ```bash
 git clone https://github.com/hyprtk/Hyprtk-ISO-Creator.git
 cd Hyprtk-ISO-Creator
-./arch-iso-builder.sh
+./hyprtk-iso-builder.sh
 ```
 
 Run it as your normal user — the script re-execs itself with `sudo` because
@@ -127,7 +127,7 @@ sudo mkfs.ext4 -L hyprtk-persist "${DEV}3"     # nvme/mmcblk use "${DEV}p3"
 ## How it fits together
 
 ```
-arch-iso-builder.sh        # the builder
+hyprtk-iso-builder.sh      # the builder
 hyprtk-usb                 # host-side USB writer (+ persistence partition)
 packages.hyprtk            # official packages baked into the ISO
 aur-packages.txt           # AUR extras, built on the host
